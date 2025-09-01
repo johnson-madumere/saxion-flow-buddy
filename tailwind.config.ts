@@ -104,6 +104,11 @@ export default {
 				'gradient-academic': 'var(--gradient-primary)',
 				'gradient-secondary': 'var(--gradient-secondary)',
 				'gradient-hero': 'var(--gradient-hero)'
+			},
+			boxShadow: {
+				'academic': '0 4px 6px -1px hsl(214 100% 31% / 0.1), 0 2px 4px -1px hsl(214 100% 31% / 0.06)',
+				'card': '0 10px 15px -3px hsl(212 19% 13% / 0.1), 0 4px 6px -2px hsl(212 19% 13% / 0.05)',
+				'elevated': '0 20px 25px -5px hsl(212 19% 13% / 0.1), 0 10px 10px -5px hsl(212 19% 13% / 0.04)'
 			}
 		}
 	},
