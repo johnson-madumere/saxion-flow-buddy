@@ -358,7 +358,7 @@ function Header({ t, lang, setLang, user, onLogout }) {
     <motion.header 
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-border/40 shadow-sm"
+      className="sticky top-0 z-50 bg-header-green/95 backdrop-blur-md border-b border-border/40 shadow-sm"
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between p-4 lg:p-6">
         <motion.div 

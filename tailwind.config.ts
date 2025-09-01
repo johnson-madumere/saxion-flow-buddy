@@ -59,6 +59,7 @@ export default {
 					success: 'hsl(var(--academic-success))',
 					warning: 'hsl(var(--academic-warning))'
 				},
+				'header-green': 'hsl(var(--header-green))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
