@@ -9,7 +9,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [activeApp, setActiveApp] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
-  const { lang, setLang, t } = useI18n("en");
+  const { lang, setLang, t } = useI18n("en"); // English as default
 
   useEffect(() => {
     saveState(db);
@@ -131,7 +131,6 @@ export default function App() {
         lang={lang}
         setLang={handleLanguageChange}
         user={user}
-        onLogout={handleLogout}
         onProfileClick={handleProfileClick}
       />
       <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -143,6 +142,7 @@ export default function App() {
             user={user}
             onBack={handleProfileBack}
             onUpdateProfile={handleUpdateProfile}
+            onLogout={handleLogout}
           />
         ) : activeApp ? (
           <ApplicationView

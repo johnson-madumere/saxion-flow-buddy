@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, User, Mail, GraduationCap, Globe } from "lucide-react";
+import { ArrowLeft, Save, User, Mail, GraduationCap, Globe, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface ProfileScreenProps {
@@ -13,9 +13,10 @@ interface ProfileScreenProps {
   user: any;
   onBack: () => void;
   onUpdateProfile: (updatedUser: any) => void;
+  onLogout: () => void;
 }
 
-export function ProfileScreen({ t, user, onBack, onUpdateProfile }: ProfileScreenProps) {
+export function ProfileScreen({ t, user, onBack, onUpdateProfile, onLogout }: ProfileScreenProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user.name || "",
@@ -215,12 +216,24 @@ export function ProfileScreen({ t, user, onBack, onUpdateProfile }: ProfileScree
                 </motion.div>
               </>
             ) : (
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button onClick={() => setIsEditing(true)} className="gap-2">
-                  <User className="w-4 h-4" />
-                  {t("editProfile")}
-                </Button>
-              </motion.div>
+              <>
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button onClick={() => setIsEditing(true)} className="gap-2">
+                    <User className="w-4 h-4" />
+                    {t("editProfile")}
+                  </Button>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button 
+                    variant="outline" 
+                    onClick={onLogout}
+                    className="gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    {t("logout")}
+                  </Button>
+                </motion.div>
+              </>
             )}
           </div>
         </CardContent>

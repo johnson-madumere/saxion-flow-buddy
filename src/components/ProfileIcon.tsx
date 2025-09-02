@@ -17,7 +17,7 @@ export function ProfileIcon({ user, onClick }: ProfileIconProps) {
         variant="ghost"
         size="sm"
         onClick={onClick}
-        className="h-10 w-10 rounded-full p-0 border-0 bg-muted/50 hover:bg-muted/70"
+        className="h-10 w-10 rounded-full p-0 border-0 bg-white/10 hover:bg-white/20 text-white"
         title="Profile"
       >
         <User className="h-5 w-5" />

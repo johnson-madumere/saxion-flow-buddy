@@ -181,7 +181,7 @@ export const DEMO_JSON = {
       email: "alex@saxion-demo.nl",
       password: "demo",
       role: "student",
-      locale: "nl",
+      locale: "en", // Changed to English as default
       locationOfHome: "",
       dateOfBirth: "",
       applications: [
