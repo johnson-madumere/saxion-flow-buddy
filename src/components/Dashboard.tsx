@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Archive, Download, FileText, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { ProfileCompletionCheck } from "./ProfileCompletionCheck";
 
 interface DashboardProps {
   t: (key: string) => string;
@@ -11,9 +12,10 @@ interface DashboardProps {
   onStart: (app: any) => void;
   onRunArchival: () => void;
   onDownload: () => void;
+  onCompleteProfile: () => void;
 }
 
-export function Dashboard({ t, user, onStart, onRunArchival, onDownload }: DashboardProps) {
+export function Dashboard({ t, user, onStart, onRunArchival, onDownload, onCompleteProfile }: DashboardProps) {
   const appsActive = user.applications.filter((a: any) => !a.archived);
   const appsArchived = user.applications.filter((a: any) => a.archived);
 
@@ -23,27 +25,18 @@ export function Dashboard({ t, user, onStart, onRunArchival, onDownload }: Dashb
       animate={{ opacity: 1 }}
       className="space-y-8"
     >
+      <ProfileCompletionCheck 
+        t={t} 
+        user={user} 
+        onCompleteProfile={onCompleteProfile} 
+      />
+      
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-2">
             {t("welcome")}, {user.name}!
           </h1>
           <p className="text-muted-foreground">{t("multiApplicationsNote")}</p>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <motion.div whileHover={{ scale: 1.02 }}>
-            <Button variant="outline" onClick={onRunArchival} className="gap-2">
-              <Archive className="w-4 h-4" />
-              {t("runArchival")}
-            </Button>
-          </motion.div>
-          <motion.div whileHover={{ scale: 1.02 }}>
-            <Button variant="outline" onClick={onDownload} className="gap-2">
-              <Download className="w-4 h-4" />
-              {t("downloadData")}
-            </Button>
-          </motion.div>
         </div>
       </div>
 

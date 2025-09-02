@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Header, LoginCard, Dashboard, ApplicationView } from "@/components";
+import { Header, LoginCard, Dashboard, ApplicationView, ProfileScreen } from "@/components";
 import { useI18n } from "@/hooks/useI18n";
 import { loadState, saveState, twoYearsAgo } from "@/lib/utils";
 
@@ -8,17 +8,18 @@ export default function App() {
   const [db, setDb] = useState(loadState());
   const [user, setUser] = useState(null);
   const [activeApp, setActiveApp] = useState(null);
-  const defaultLocale = user?.locale || "en";
-  const { lang, setLang, t } = useI18n(defaultLocale);
+  const [showProfile, setShowProfile] = useState(false);
+  const { lang, setLang, t } = useI18n("en");
 
   useEffect(() => {
     saveState(db);
   }, [db]);
 
   useEffect(() => {
-    if (user?.locale && lang !== user.locale) setLang(user.locale);
-    // eslint-disable-next-line
-  }, [user]);
+    if (user?.locale && lang !== user.locale) {
+      setLang(user.locale);
+    }
+  }, [user, lang, setLang]);
 
   const handleLogin = (email: string, password: string) => {
     const u = db.users.find(
@@ -27,6 +28,10 @@ export default function App() {
     if (u) {
       setUser({ ...u });
       setActiveApp(null);
+      // Set language immediately when user logs in
+      if (u.locale && u.locale !== lang) {
+        setLang(u.locale);
+      }
     } else {
       alert("Invalid credentials (use demo/demo)");
     }
@@ -35,6 +40,46 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     setActiveApp(null);
+    setShowProfile(false);
+  };
+
+  const handleProfileClick = () => {
+    setShowProfile(true);
+    setActiveApp(null);
+  };
+
+  const handleProfileBack = () => {
+    setShowProfile(false);
+  };
+
+  const handleUpdateProfile = (updatedUser: any) => {
+    setDb((prev: any) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      const idx = copy.users.findIndex((u: any) => u.id === updatedUser.id);
+      copy.users[idx] = updatedUser;
+      return copy;
+    });
+    setUser(updatedUser);
+    
+    // Update language if it changed
+    if (updatedUser.locale && updatedUser.locale !== lang) {
+      setLang(updatedUser.locale);
+    }
+  };
+
+  const handleLanguageChange = (newLang: string) => {
+    setLang(newLang);
+    // Update user's language preference in the database
+    if (user && user.locale !== newLang) {
+      const updatedUser = { ...user, locale: newLang };
+      setDb((prev: any) => {
+        const copy = JSON.parse(JSON.stringify(prev));
+        const idx = copy.users.findIndex((u: any) => u.id === user.id);
+        copy.users[idx] = updatedUser;
+        return copy;
+      });
+      setUser(updatedUser);
+    }
   };
 
   const updateUser = (updater: (user: any) => any) => {
@@ -84,13 +129,21 @@ export default function App() {
       <Header
         t={t}
         lang={lang}
-        setLang={setLang}
+        setLang={handleLanguageChange}
         user={user}
         onLogout={handleLogout}
+        onProfileClick={handleProfileClick}
       />
       <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {!user ? (
           <LoginCard t={t} onLogin={handleLogin} />
+        ) : showProfile ? (
+          <ProfileScreen
+            t={t}
+            user={user}
+            onBack={handleProfileBack}
+            onUpdateProfile={handleUpdateProfile}
+          />
         ) : activeApp ? (
           <ApplicationView
             t={t}
@@ -114,6 +167,7 @@ export default function App() {
             onStart={(app) => setActiveApp(app)}
             onRunArchival={runArchival}
             onDownload={exportJSON}
+            onCompleteProfile={handleProfileClick}
           />
         )}
       </main>

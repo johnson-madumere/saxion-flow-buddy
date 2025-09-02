@@ -11,6 +11,7 @@ import {
 import { LogOut, Languages, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/logo.jpg";
+import { ProfileIcon } from "./ProfileIcon";
 
 interface HeaderProps {
   t: (key: string) => string;
@@ -18,9 +19,10 @@ interface HeaderProps {
   setLang: (lang: string) => void;
   user: any;
   onLogout: () => void;
+  onProfileClick: () => void;
 }
 
-export function Header({ t, lang, setLang, user, onLogout }: HeaderProps) {
+export function Header({ t, lang, setLang, user, onLogout, onProfileClick }: HeaderProps) {
   return (
     <motion.header
       initial={{ y: -20, opacity: 0 }}
@@ -59,16 +61,19 @@ export function Header({ t, lang, setLang, user, onLogout }: HeaderProps) {
           </Select>
 
           {user && (
-            <motion.div whileHover={{ scale: 1.02 }}>
-              <Button
-                variant="outline"
-                onClick={onLogout}
-                className="gap-2 border-0 bg-muted/50"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">{t("logout")}</span>
-              </Button>
-            </motion.div>
+            <>
+              <motion.div whileHover={{ scale: 1.02 }}>
+                <Button
+                  variant="outline"
+                  onClick={onLogout}
+                  className="gap-2 border-0 bg-muted/50"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">{t("logout")}</span>
+                </Button>
+              </motion.div>
+              <ProfileIcon user={user} onClick={onProfileClick} />
+            </>
           )}
         </div>
       </div>
