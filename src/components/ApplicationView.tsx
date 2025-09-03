@@ -20,6 +20,9 @@ import {
   Video,
   CheckCircle2,
   ArrowRight,
+  MapPin,
+  Calendar as CalendarIcon,
+  ClipboardList,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -32,7 +35,43 @@ interface ApplicationViewProps {
 }
 
 export function ApplicationView({ t, user, app, setApp, updateApp }: ApplicationViewProps) {
-  const [tab, setTab] = useState("documents");
+  const [activeCard, setActiveCard] = useState("questionnaire");
+  
+  // Define the three main cards with their properties
+  const cards = [
+    {
+      id: "questionnaire",
+      label: "Questionnaire",
+      icon: ClipboardList,
+      image: "/src/assets/logo.jpg", // Saxion logo for questionnaire
+      completed: false,
+    },
+    {
+      id: "documents",
+      label: "Upload Documents", 
+      icon: Upload,
+      image: "/src/assets/logo.jpg", // Saxion logo for documents
+      completed: false,
+    },
+    {
+      id: "appointments",
+      label: "Appointments",
+      icon: Calendar,
+      image: "/src/assets/logo.jpg", // Saxion logo for appointments
+      completed: false,
+    },
+  ];
+
+  // Determine card states based on active card
+  const getCardState = (cardId: string) => {
+    if (cardId === activeCard) return "active";
+    if (cardId === "questionnaire" && activeCard === "documents") return "completed";
+    if (cardId === "questionnaire" && activeCard === "appointments") return "completed";
+    if (cardId === "documents" && activeCard === "appointments") return "completed";
+    if (cardId === "documents" && activeCard === "questionnaire") return "disabled";
+    if (cardId === "appointments" && activeCard !== "appointments") return "disabled";
+    return "pending";
+  };
 
   const setStep = (path: string, value: any) => {
     const next = { ...app };
@@ -77,6 +116,91 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
 
   const nowIso = () => new Date().toISOString();
 
+  // Reusable Card Component
+  const CardComponent = ({ card, state, onClick }: { card: any, state: string, onClick: () => void }) => {
+    const IconComponent = card.icon;
+    const isDisabled = state === "disabled";
+    const isCompleted = state === "completed";
+    const isActive = state === "active";
+    
+    return (
+      <motion.div
+        whileHover={!isDisabled ? { scale: 1.02 } : {}}
+        whileTap={!isDisabled ? { scale: 0.98 } : {}}
+      >
+        <Card 
+          className={`cursor-pointer transition-all duration-200 ${
+            isActive 
+              ? "ring-2 ring-primary shadow-lg" 
+              : isCompleted 
+              ? "bg-green-50 border-green-200" 
+              : isDisabled 
+              ? "opacity-50 cursor-not-allowed bg-gray-50" 
+              : "hover:shadow-md"
+          }`}
+          onClick={onClick}
+        >
+          <CardContent className="p-6">
+            <div className="flex flex-col items-center text-center space-y-4">
+              {/* Image Container */}
+              <div className={`w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl flex items-center justify-center overflow-hidden border-2 shadow-sm transition-all duration-200 ${
+                isActive 
+                  ? "border-primary shadow-md scale-105" 
+                  : isCompleted 
+                  ? "border-green-300 shadow-md" 
+                  : isDisabled 
+                  ? "border-muted-foreground/30" 
+                  : "border-primary/20 hover:border-primary/40 hover:shadow-md hover:scale-105"
+              }`}>
+                <img 
+                  src={card.image} 
+                  alt={card.label}
+                  className="w-full h-full object-cover rounded-lg"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
+                    if (nextElement) {
+                      nextElement.style.display = 'flex';
+                    }
+                  }}
+                />
+                <div className="w-full h-full bg-primary/10 flex items-center justify-center rounded-lg" style={{display: 'none'}}>
+                  <IconComponent className="w-8 h-8 text-primary" />
+                </div>
+              </div>
+              
+              {/* Card Label */}
+              <h3 className={`font-semibold text-lg transition-colors duration-200 ${
+                isDisabled 
+                  ? "text-muted-foreground" 
+                  : isActive 
+                  ? "text-primary" 
+                  : isCompleted 
+                  ? "text-green-700" 
+                  : "text-foreground"
+              }`}>
+                {card.label}
+              </h3>
+              
+              {/* Status Indicator */}
+              <div className="flex items-center gap-2">
+                {isCompleted && (
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                )}
+                {isActive && (
+                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                )}
+                {isDisabled && (
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -104,120 +228,43 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
             {app.archived && <Badge variant="outline">{t("archived")}</Badge>}
           </div>
           <div className="text-muted-foreground">
-            {t("cycle")}: {app.cycle} • {t("status")}: {t(app.status)}
+            Duration: {app.cycle} • Location: {app.location || "Campus"} • Deadline: {app.deadline || "TBD"} • {t("status")}: {t(app.status)}
           </div>
         </div>
       </div>
 
+      {/* Three Card Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {cards.map((card) => {
+          const state = getCardState(card.id);
+          const isDisabled = state === "disabled";
+          
+          return (
+            <CardComponent
+              key={card.id}
+              card={card}
+              state={state}
+              onClick={() => !isDisabled && setActiveCard(card.id)}
+            />
+          );
+        })}
+      </div>
+
+      {/* Content Area */}
       <Card className="academic-card border-0">
-        <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid grid-cols-5 w-full h-auto p-1 bg-muted/30">
-            <TabsTrigger
-              value="documents"
-              className="flex-col gap-1 py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm"
-            >
-              <Upload className="w-4 h-4" />
-              <span className="text-xs">{t("uploadDocuments")}</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="assignment"
-              className="flex-col gap-1 py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm"
-            >
-              <FileText className="w-4 h-4" />
-              <span className="text-xs">{t("assignment")}</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="appointment"
-              className="flex-col gap-1 py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm"
-            >
-              <Clock className="w-4 h-4" />
-              <span className="text-xs">{t("appointment")}</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="interview"
-              className="flex-col gap-1 py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm"
-            >
-              <Video className="w-4 h-4" />
-              <span className="text-xs">{t("interview")}</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="result"
-              className="flex-col gap-1 py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span className="text-xs">{t("result")}</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="p-6">
-            <TabsContent value="documents" className="mt-0 space-y-6">
+        <div className="p-6">
+          {/* Questionnaire Content */}
+          {activeCard === "questionnaire" && (
+            <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-2">
-                  {t("uploadDocuments")}
-                </h3>
-                <p className="text-muted-foreground mb-4">{t("docHint")}</p>
+                <h3 className="text-lg font-semibold mb-2">Questionnaire</h3>
+                <p className="text-muted-foreground mb-4">Complete the application questionnaire to proceed</p>
               </div>
-
-              <div className="border-2 border-dashed border-border rounded-xl p-6 text-center bg-muted/10">
-                <Upload className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
-                <input
-                  type="file"
-                  onChange={(e) =>
-                    e.target.files?.[0] && addDocument(e.target.files[0])
-                  }
-                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                />
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-3">{t("yourDocs")}</h4>
-                {app.steps.documents.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    {t("noDocs")}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {app.steps.documents.map((d: any) => (
-                      <motion.div
-                        key={d.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center justify-between p-4 border rounded-xl bg-card hover:shadow-sm transition-shadow"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <div className="font-medium">{d.label}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {d.mime} • {(d.size / 1024).toFixed(1)} KB •{" "}
-                              {d.uploadedAt}
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="assignment" className="mt-0 space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-2">
-                  {t("assignment")}
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  {t("assignmentHint")}
-                </p>
-              </div>
-
+              
               <div className="space-y-4">
                 <Textarea
                   rows={8}
-                  value={app.steps.assignment.text}
+                  value={app.steps.assignment?.text || ""}
                   onChange={(e) => setStep("assignment.text", e.target.value)}
                   placeholder="Write your motivation letter here..."
                   className="resize-none"
@@ -246,22 +293,20 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                     <Button
                       onClick={() => {
                         const next = { ...app };
-                        next.steps.assignment.submittedAt = nowIso().slice(
-                          0,
-                          10
-                        );
+                        next.steps.assignment.submittedAt = nowIso().slice(0, 10);
                         updateApp(() => next);
                         setApp(next);
+                        setActiveCard("documents");
                       }}
                       className="gap-2"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      {t("submitAssignment")}
+                      Complete Questionnaire
                     </Button>
                   </motion.div>
                 </div>
 
-                {app.steps.assignment.submittedAt && (
+                {app.steps.assignment?.submittedAt && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -269,49 +314,109 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                   >
                     <div className="flex items-center gap-2 text-academic-success text-sm font-medium">
                       <CheckCircle2 className="w-4 h-4" />
-                      Submitted on {app.steps.assignment.submittedAt}
+                      Questionnaire completed on {app.steps.assignment.submittedAt}
                     </div>
                   </motion.div>
                 )}
               </div>
-            </TabsContent>
+            </div>
+          )}
 
-            <TabsContent value="appointment" className="mt-0 space-y-6">
+          {/* Upload Documents Content */}
+          {activeCard === "documents" && (
+            <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-2">
-                  {t("appointment")}
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  Schedule your intake appointment
-                </p>
+                <h3 className="text-lg font-semibold mb-2">Upload Documents</h3>
+                <p className="text-muted-foreground mb-4">Upload your required documents</p>
+              </div>
+
+              <div className="border-2 border-dashed border-border rounded-xl p-6 text-center bg-muted/10">
+                <Upload className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
+                <input
+                  type="file"
+                  onChange={(e) =>
+                    e.target.files?.[0] && addDocument(e.target.files[0])
+                  }
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                />
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-3">Your Documents</h4>
+                {app.steps.documents.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    No documents uploaded yet
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {app.steps.documents.map((d: any) => (
+                      <motion.div
+                        key={d.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center justify-between p-4 border rounded-xl bg-card hover:shadow-sm transition-shadow"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <FileText className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <div className="font-medium">{d.label}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {d.mime} • {(d.size / 1024).toFixed(1)} KB • {d.uploadedAt}
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {app.steps.documents.length > 0 && (
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Button
+                    onClick={() => setActiveCard("appointments")}
+                    className="gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Proceed to Appointments
+                  </Button>
+                </motion.div>
+              )}
+            </div>
+          )}
+
+          {/* Appointments Content */}
+          {activeCard === "appointments" && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Schedule Appointments</h3>
+                <p className="text-muted-foreground mb-4">Schedule your intake appointment and interview</p>
               </div>
 
               <div className="grid gap-6">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      {t("selectDate")}
-                    </label>
+                    <label className="text-sm font-medium mb-2 block">Select Date</label>
                     <Input
                       type="date"
-                      value={app.steps.appointment.date}
-                      onChange={(e) =>
-                        setStep("appointment.date", e.target.value)
-                      }
+                      value={app.steps.appointment?.date || ""}
+                      onChange={(e) => setStep("appointment.date", e.target.value)}
                       className="h-11"
                     />
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      {t("selectTime")}
-                    </label>
+                    <label className="text-sm font-medium mb-2 block">Select Time</label>
                     <Input
                       type="time"
-                      value={app.steps.appointment.time}
-                      onChange={(e) =>
-                        setStep("appointment.time", e.target.value)
-                      }
+                      value={app.steps.appointment?.time || ""}
+                      onChange={(e) => setStep("appointment.time", e.target.value)}
                       className="h-11"
                     />
                   </div>
@@ -319,34 +424,26 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      {t("meetingType")}
-                    </label>
+                    <label className="text-sm font-medium mb-2 block">Meeting Type</label>
                     <Select
-                      value={app.steps.appointment.type}
+                      value={app.steps.appointment?.type || ""}
                       onValueChange={(v) => setStep("appointment.type", v)}
                     >
                       <SelectTrigger className="h-11">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="intake">{t("intake")}</SelectItem>
-                        <SelectItem value="meet&greet">
-                          {t("meetGreet")}
-                        </SelectItem>
+                        <SelectItem value="intake">Intake</SelectItem>
+                        <SelectItem value="meet&greet">Meet & Greet</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      {t("notes")}
-                    </label>
+                    <label className="text-sm font-medium mb-2 block">Notes</label>
                     <Input
-                      value={app.steps.appointment.notes}
-                      onChange={(e) =>
-                        setStep("appointment.notes", e.target.value)
-                      }
+                      value={app.steps.appointment?.notes || ""}
+                      onChange={(e) => setStep("appointment.notes", e.target.value)}
                       placeholder="Additional notes..."
                       className="h-11"
                     />
@@ -359,224 +456,13 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                 >
                   <Button className="gap-2">
                     <Calendar className="w-4 h-4" />
-                    {t("save")}
+                    Save Appointment
                   </Button>
                 </motion.div>
               </div>
-            </TabsContent>
-
-            <TabsContent value="interview" className="mt-0 space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-2">{t("interview")}</h3>
-                <p className="text-muted-foreground mb-4">
-                  Schedule your final interview
-                </p>
-              </div>
-
-              <div className="grid gap-6">
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      {t("selectDate")}
-                    </label>
-                    <Input
-                      type="date"
-                      value={app.steps.interview.date}
-                      onChange={(e) =>
-                        setStep("interview.date", e.target.value)
-                      }
-                      className="h-11"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      {t("selectTime")}
-                    </label>
-                    <Input
-                      type="time"
-                      value={app.steps.interview.time}
-                      onChange={(e) =>
-                        setStep("interview.time", e.target.value)
-                      }
-                      className="h-11"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      {t("interviewMode")}
-                    </label>
-                    <Select
-                      value={app.steps.interview.mode}
-                      onValueChange={(v) => setStep("interview.mode", v)}
-                    >
-                      <SelectTrigger className="h-11">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="online">{t("online")}</SelectItem>
-                        <SelectItem value="onCampus">
-                          {t("onCampus")}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      {t("videoLink")}
-                    </label>
-                    <Input
-                      value={app.steps.interview.link}
-                      onChange={(e) =>
-                        setStep("interview.link", e.target.value)
-                      }
-                      placeholder="https://teams.microsoft.com/..."
-                      className="h-11"
-                    />
-                  </div>
-                </div>
-
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button className="gap-2">
-                    <Video className="w-4 h-4" />
-                    {t("save")}
-                  </Button>
-                </motion.div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="result" className="mt-0 space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-2">{t("result")}</h3>
-                <p className="text-muted-foreground mb-4">
-                  View your application result
-                </p>
-              </div>
-
-              {app.steps.result.published ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  <div className="p-6 bg-gradient-secondary rounded-xl border">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-12 h-12 bg-academic-success rounded-full flex items-center justify-center">
-                        <CheckCircle2 className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-lg">
-                          {t("resultPublished")}
-                        </h4>
-                        <p className="text-muted-foreground">
-                          {t("publishedAt")}: {app.steps.result.publishedAt}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">
-                          {t("decision")}
-                        </label>
-                        <Select
-                          value={app.steps.result.decision}
-                          onValueChange={(v) => setStep("result.decision", v)}
-                        >
-                          <SelectTrigger className="h-11">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admit">{t("admit")}</SelectItem>
-                            <SelectItem value="conditional">
-                              {t("conditional")}
-                            </SelectItem>
-                            <SelectItem value="reject">
-                              {t("reject")}
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">
-                          {t("publishedAt")}
-                        </label>
-                        <Input
-                          value={app.steps.result.publishedAt || ""}
-                          onChange={(e) =>
-                            setStep("result.publishedAt", e.target.value)
-                          }
-                          className="h-11"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Clock className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <p className="text-muted-foreground">{t("noResult")}</p>
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-3">
-                {user.role === "staff" && (
-                  <>
-                    <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Button
-                        onClick={() => togglePublish(true)}
-                        className="gap-2"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        {t("publishResult")}
-                      </Button>
-                    </motion.div>
-                    <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Button
-                        variant="outline"
-                        onClick={() => togglePublish(false)}
-                        className="gap-2"
-                      >
-                        <Clock className="w-4 h-4" />
-                        {t("unpublishResult")}
-                      </Button>
-                    </motion.div>
-                  </>
-                )}
-
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    variant="outline"
-                    onClick={markAllDone}
-                    className="gap-2"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    {t("markAllDone")}
-                  </Button>
-                </motion.div>
-              </div>
-            </TabsContent>
-          </div>
-        </Tabs>
+            </div>
+          )}
+        </div>
       </Card>
     </motion.div>
   );
