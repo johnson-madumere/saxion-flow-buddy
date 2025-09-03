@@ -21,6 +21,7 @@ import {
   ClipboardList,
   Lock,
   Loader2,
+  File,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -38,7 +39,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
   const [isApproved, setIsApproved] = useState<boolean>(!!app?.steps?.documents?.approved);
   const [forceUpdate, setForceUpdate] = useState(0);
 
-  // 🔹 Restore from localStorage on mount if no app exists
+  // Restore from localStorage on mount if no app exists
   useEffect(() => {
     if (!app) {
       const saved = localStorage.getItem("application");
@@ -48,71 +49,61 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
     }
   }, [app, setApp]);
 
-  // 🔹 Persist to localStorage whenever app changes
+  // Persist to localStorage whenever app changes
   useEffect(() => {
     if (app) {
       localStorage.setItem("application", JSON.stringify(app));
     }
   }, [app]);
 
-  // keep local state in sync if app changes outside
+  // Keep local state in sync if app changes outside
   useEffect(() => {
     const newApproved = !!app?.steps?.documents?.approved;
-    if (newApproved !== isApproved) {
-      setIsApproved(newApproved);
-    }
-    if (newApproved && isReviewing) {
-      setIsReviewing(false);
-    }
+    if (newApproved !== isApproved) setIsApproved(newApproved);
+    if (newApproved && isReviewing) setIsReviewing(false);
   }, [app?.steps?.documents?.approved, isApproved, isReviewing]);
 
   // Restore active card based on application state
   useEffect(() => {
-    if (app?.steps?.documents?.approved) {
-      setActiveCard("appointments");
-    } else if (app?.steps?.documents?.submitted) {
-      setActiveCard("documents");
-    } else if (app?.steps?.assignment?.submittedAt) {
-      setActiveCard("documents");
-    } else {
-      setActiveCard("questionnaire");
-    }
-  }, [app?.steps?.documents?.approved, app?.steps?.documents?.submitted, app?.steps?.assignment?.submittedAt]);
+    if (app?.steps?.documents?.approved) setActiveCard("appointments");
+    else if (app?.steps?.documents?.submitted) setActiveCard("documents");
+    else if (app?.steps?.assignment?.submittedAt) setActiveCard("documents");
+    else setActiveCard("questionnaire");
+  }, [
+    app?.steps?.documents?.approved,
+    app?.steps?.documents?.submitted,
+    app?.steps?.assignment?.submittedAt,
+  ]);
 
   // Reset reviewing state if documents are no longer submitted
   useEffect(() => {
-    if (!app?.steps?.documents?.submitted && isReviewing) {
-      setIsReviewing(false);
-    }
+    if (!app?.steps?.documents?.submitted && isReviewing) setIsReviewing(false);
   }, [app?.steps?.documents?.submitted, isReviewing]);
 
-  // The three main cards
+  // Step cards with distinct icons
   const cards = [
     {
       id: "questionnaire",
       label: t("questionnaire"),
       icon: ClipboardList,
-      image: "/src/assets/logo.jpg",
-      completed: false,
+      color: "bg-blue-100",
     },
     {
       id: "documents",
       label: t("uploadDocuments"),
       icon: Upload,
-      image: "/src/assets/logo.jpg",
-      completed: false,
+      color: "bg-yellow-100",
     },
     {
       id: "appointments",
       label: t("scheduleAppointments"),
       icon: Calendar,
-      image: "/src/assets/logo.jpg",
-      completed: false,
+      color: "bg-green-100",
       locked: true,
     },
   ];
 
-  // Start review ONLY after documents have been submitted
+  // Simulate review & approval after submission
   useEffect(() => {
     const docs = app.steps.documents;
     const hasDocs = Array.isArray(docs?.files) && docs.files.length > 0;
@@ -134,8 +125,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
 
         setApp(next);
         updateApp(() => next);
-
-        setForceUpdate(prev => prev + 1);
+        setForceUpdate((prev) => prev + 1);
         setActiveCard("appointments");
       }, 10000);
 
@@ -147,7 +137,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
     app.steps.documents?.approved,
   ]);
 
-  // Determine card UI states
+  // Helpers
   const getCardState = (cardId: string) => {
     if (cardId === activeCard) return "active";
     if (cardId === "questionnaire" && app?.steps?.assignment?.submittedAt) return "completed";
@@ -157,10 +147,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
     return "pending";
   };
 
-  const isCardLocked = (cardId: string) => {
-    if (cardId === "appointments") return !isApproved;
-    return false;
-  };
+  const isCardLocked = (cardId: string) => (cardId === "appointments" ? !isApproved : false);
 
   const setStep = (path: string, value: any) => {
     const next = { ...app };
@@ -193,9 +180,6 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
     const next = { ...app };
     if (!next.steps.documents) next.steps.documents = {};
     if (!Array.isArray(next.steps.documents.files)) next.steps.documents.files = [];
-    if (Array.isArray(next.steps.documents)) {
-      next.steps.documents.files = [...next.steps.documents];
-    }
     next.steps.documents.submitted = true;
     next.steps.documents.submittedAt = new Date().toISOString();
     next.status = "submitted";
@@ -204,7 +188,8 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
   };
 
   const nowIso = () => new Date().toISOString();
-  
+
+  // Card component with distinct icon
   const CardComponent = ({
     card,
     state,
@@ -218,9 +203,9 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
   }) => {
     const IconComponent = card.icon;
     const isDisabled = state === "disabled" || isLocked;
-    const isCompleted = state === "completed";
+    const isCompleted = state === "completed"; // approved
     const isActive = state === "active";
-
+  
     return (
       <motion.div
         whileHover={!isDisabled ? { scale: 1.02 } : {}}
@@ -230,21 +215,21 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
         <Card
           className={`cursor-pointer transition-all duration-200 h-full ${
             isActive
-              ? "ring-2 ring-primary shadow-lg"
+              ? "ring-2 ring-primary shadow-lg bg-white"
               : isCompleted
               ? "bg-green-50 border-green-200"
               : isLocked
-              ? "opacity-60 cursor-not-allowed bg-gray-50 border-gray-200"
+              ? "opacity-60 cursor-not-allowed bg-white border-gray-200"
               : isDisabled
-              ? "opacity-50 cursor-not-allowed bg-gray-50"
-              : "hover:shadow-md"
+              ? "opacity-50 cursor-not-allowed bg-white"
+              : "hover:shadow-md bg-white border border-gray-200"
           }`}
           onClick={onClick}
         >
           <CardContent className="p-4 sm:p-6">
             <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
               <div
-                className={`w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl flex items-center justify-center overflow-hidden border-2 shadow-sm transition-all duration-200 ${
+                className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl flex items-center justify-center overflow-hidden border-2 shadow-sm transition-all duration-200 ${
                   isActive
                     ? "border-primary shadow-md scale-105"
                     : isCompleted
@@ -253,38 +238,16 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                     ? "border-gray-300 shadow-sm"
                     : isDisabled
                     ? "border-muted-foreground/30"
-                    : "border-primary/20 hover:border-primary/40 hover:shadow-md hover:scale-105"
-                }`}
+                    : "border-gray-200 hover:border-primary/40 hover:shadow-md hover:scale-105"
+                } bg-white`}
               >
                 {isLocked ? (
-                  <div className="w-full h-full bg-gray-100 flex items-center justify-center rounded-lg">
-                    <Lock className="w-6 h-6 sm:w-8 sm:h-8 text-gray-500" />
-                  </div>
+                  <Lock className="w-6 h-6 sm:w-8 sm:h-8 text-gray-500" />
                 ) : (
-                  <>
-                    <img
-                      src={card.image}
-                      alt={card.label}
-                      className="w-full h-full object-cover rounded-lg"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                        const nextElement =
-                          e.currentTarget.nextElementSibling as HTMLElement;
-                        if (nextElement) {
-                          nextElement.style.display = "flex";
-                        }
-                      }}
-                    />
-                    <div
-                      className="w-full h-full bg-primary/10 flex items-center justify-center rounded-lg"
-                      style={{ display: "none" }}
-                    >
-                      <IconComponent className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
-                    </div>
-                  </>
+                  <IconComponent className={`w-8 h-8 ${isCompleted ? "text-green-600" : "text-primary"}`} />
                 )}
               </div>
-
+  
               <h3
                 className={`font-semibold text-base sm:text-lg transition-colors duration-200 leading-tight ${
                   isLocked
@@ -299,22 +262,14 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                 }`}
               >
                 {card.label}
-                {isLocked && (
-                  <span className="block text-xs mt-1 opacity-70">(Locked)</span>
-                )}
+                {isLocked && <span className="block text-xs mt-1 opacity-70">(Locked)</span>}
               </h3>
-
+  
               <div className="flex items-center justify-center h-5">
-                {isCompleted && (
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                )}
-                {isActive && !isLocked && (
-                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                )}
+                {isCompleted && <CheckCircle2 className="w-5 h-5 text-green-600" />}
+                {isActive && !isLocked && <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />}
                 {isLocked && <Lock className="w-4 h-4 text-gray-500" />}
-                {isDisabled && !isLocked && (
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                )}
+                {isDisabled && !isLocked && <Clock className="w-4 h-4 text-muted-foreground" />}
               </div>
             </div>
           </CardContent>
@@ -322,6 +277,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
       </motion.div>
     );
   };
+  
 
   // Compact arrow
   const ArrowComponent = ({
