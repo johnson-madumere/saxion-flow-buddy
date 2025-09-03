@@ -36,30 +36,159 @@ import React, { useState, useEffect } from "react";
     updateApp: (updater: (app: any) => any) => void;
   }
 
+  // Helper function to generate a consistent storage key
+  const getStorageKeyForProgram = (program: string) => {
+    if (!program) return '';
+    const cleanProgram = program
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_') // Replace any non-alphanumeric chars with underscore
+      .replace(/^_+|_+$/g, ''); // Remove leading/trailing underscores
+    return `saxion_flow_app_${cleanProgram}`;
+  };
+
   export function ApplicationView({ t, user, app, setApp, updateApp }: ApplicationViewProps) {
-    const [activeCard, setActiveCard] = useState("questionnaire");
+    // Initialize state from localStorage or use default values
+    const getInitialState = () => {
+      if (!app?.program) return null;
+      const storageKey = getStorageKeyForProgram(app.program);
+      console.log('Initializing state for program:', app.program, 'with key:', storageKey);
+      const saved = localStorage.getItem(storageKey);
+      
+      if (saved) {
+        const parsedState = JSON.parse(saved);
+        // Only use saved state if it matches exactly this program
+        if (parsedState.program === app.program) {
+          console.log('Found matching initial state for:', app.program);
+          return parsedState;
+        }
+        console.log('Found state but program mismatch, starting fresh');
+      }
+      
+      // Return fresh state for this program
+      return {
+        ...app,
+        steps: {}, // Start with empty steps
+        status: 'new', // Start with new status
+        _storageKey: storageKey
+      };
+    };
+
+    const initialState = getInitialState();
+    const [activeCard, setActiveCard] = useState(() => {
+      if (initialState?.activeCard) return initialState.activeCard;
+      return "questionnaire";
+    });
+    
     const [isReviewing, setIsReviewing] = useState(false);
-    const [isApproved, setIsApproved] = useState<boolean>(!!app?.steps?.documents?.approved);
+    const [isApproved, setIsApproved] = useState<boolean>(() => {
+      if (initialState?.steps?.documents?.approved) return true;
+      return !!app?.steps?.documents?.approved;
+    });
     const [forceUpdate, setForceUpdate] = useState(0);
     const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+    const [showRescheduleModal, setShowRescheduleModal] = useState(false);
     const [savedAppointment, setSavedAppointment] = useState<any>(null);
 
-    // Restore from localStorage on mount if no app exists
-    useEffect(() => {
-      if (!app) {
-        const saved = localStorage.getItem("application");
-        if (saved) {
-          setApp(JSON.parse(saved));
-        }
-      }
-    }, [app, setApp]);
+    // Helper function to generate a consistent storage key
+    const getStorageKey = (program: string) => {
+      const cleanProgram = program
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_') // Replace any non-alphanumeric chars with underscore
+        .replace(/^_+|_+$/g, ''); // Remove leading/trailing underscores
+      return `saxion_flow_app_${cleanProgram}`;
+    };
 
-    // Persist to localStorage whenever app changes
+    // Initial state setup and restoration
     useEffect(() => {
-      if (app) {
-        localStorage.setItem("application", JSON.stringify(app));
+      if (!app?.program) return;
+      
+      const storageKey = getStorageKeyForProgram(app.program);
+      console.log('Loading state for program:', app.program, 'with key:', storageKey);
+      
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try {
+          const savedState = JSON.parse(saved);
+          // Only update if this is the exact same program
+          if (savedState.program === app.program) {
+            console.log('Found saved state for:', app.program);
+            // Ensure we preserve the document files and submission state
+            const restoredState = {
+              ...savedState,
+              steps: {
+                ...savedState.steps,
+                documents: {
+                  ...(savedState.steps?.documents || {}),
+                  files: Array.isArray(savedState.steps?.documents?.files) 
+                    ? savedState.steps.documents.files 
+                    : []
+                }
+              }
+            };
+            setApp(restoredState);
+            updateApp(() => restoredState);
+            
+            // Restore other states based on saved data
+            if (restoredState.steps?.documents?.approved) {
+              setIsApproved(true);
+            }
+            if (restoredState.steps?.documents?.submitted) {
+              setActiveCard("documents");
+            }
+          } else {
+            console.log('Program mismatch:', savedState.program, 'vs', app.program);
+            // Don't use mismatched state, start fresh
+            updateApp(() => ({ ...app }));
+          }
+        } catch (error) {
+          console.error('Error restoring state:', error);
+          // Start fresh if there's an error parsing saved state
+          updateApp(() => ({ ...app }));
+        }
+      } else {
+        console.log('No saved state found for:', app.program, '- starting fresh');
+        // Start with a fresh state for this program
+        updateApp(() => ({ 
+          ...app,
+          steps: {}, // Reset steps for fresh start
+          status: 'new' // Reset status
+        }));
       }
-    }, [app]);
+    }, [app?.program]); // Only run when program changes
+
+    // Save state changes
+    useEffect(() => {
+      if (!app?.program) return;
+      
+      const storageKey = getStorageKeyForProgram(app.program);
+      console.log('Saving state for program:', app.program, 'with key:', storageKey);
+      
+      // Ensure we're saving a complete state object
+      const stateToSave = {
+        ...app,
+        steps: {
+          ...app.steps,
+          documents: {
+            ...(app.steps?.documents || {}),
+            files: Array.isArray(app.steps?.documents?.files) 
+              ? app.steps.documents.files 
+              : []
+          }
+        },
+        lastUpdated: new Date().toISOString(),
+        _storageKey: storageKey
+      };
+      
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(stateToSave));
+        console.log('State saved successfully for:', app.program);
+      } catch (error) {
+        console.error('Error saving state:', error);
+      }
+      
+      // Also update the parent state
+      updateApp(() => stateToSave);
+    }, [app?.steps, app?.status, app?.program]); // Include program in dependencies
 
     // Keep local state in sync if app changes outside
     useEffect(() => {
@@ -182,7 +311,7 @@ import React, { useState, useEffect } from "react";
           updateApp(() => next);
           setForceUpdate((prev) => prev + 1);
           setActiveCard("appointments");
-        }, 10000);
+        },9999999999999999999999999);
 
         return () => clearTimeout(timer);
       }
@@ -228,6 +357,15 @@ import React, { useState, useEffect } from "react";
       if (!Array.isArray(next.steps.documents.files)) next.steps.documents.files = [];
       next.steps.documents.files.push(doc);
       next.status = "inProgress";
+
+      // Save to localStorage immediately after adding document
+      const storageKey = getStorageKeyForProgram(next.program);
+      localStorage.setItem(storageKey, JSON.stringify({
+        ...next,
+        lastUpdated: new Date().toISOString(),
+        _storageKey: storageKey
+      }));
+
       updateApp(() => next);
       setApp(next);
     };
@@ -239,6 +377,15 @@ import React, { useState, useEffect } from "react";
       next.steps.documents.submitted = true;
       next.steps.documents.submittedAt = new Date().toISOString();
       next.status = "submitted";
+
+      // Save to localStorage immediately after submitting documents
+      const storageKey = getStorageKeyForProgram(next.program);
+      localStorage.setItem(storageKey, JSON.stringify({
+        ...next,
+        lastUpdated: new Date().toISOString(),
+        _storageKey: storageKey
+      }));
+
       updateApp(() => next);
       setApp(next);
     };
@@ -269,6 +416,9 @@ import React, { useState, useEffect } from "react";
       next.steps.appointment.teamsLink = appointment.teamsLink;
       next.steps.appointment.done = true;
       next.status = "appointmentScheduled";
+      
+      // Save to localStorage immediately
+      const storageKey = getStorageKeyForProgram(next.program);
 
       // Update both local state and parent state
       setApp(next);
@@ -280,11 +430,23 @@ import React, { useState, useEffect } from "react";
     };
 
     // Navigate back to dashboard
-    const goToDashboard = () => {
-      setApp(null);
-    };
-
-    // Card component with distinct icon
+  const goToDashboard = () => {
+    // Save current state before leaving
+    if (app?.program) {
+      const storageKey = getStorageKeyForProgram(app.program);
+      console.log('Saving state before dashboard return for:', app.program, 'with key:', storageKey);
+      
+      const currentState = {
+        ...app,
+        activeCard,
+        lastUpdated: new Date().toISOString(),
+        _storageKey: storageKey // Save the key for verification
+      };
+      
+      localStorage.setItem(storageKey, JSON.stringify(currentState));
+    }
+    setApp(null);
+  };    // Card component with distinct icon
     const CardComponent = ({
       card,
       state,
@@ -410,6 +572,66 @@ import React, { useState, useEffect } from "react";
         animate={{ opacity: 1, x: 0 }}
         className="space-y-6"
       >
+        {/* Reschedule Modal */}
+        {showRescheduleModal && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl"
+            >
+              <div className="text-center space-y-6">
+                <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+                  <svg 
+                    className="w-10 h-10 text-orange-600 animate-spin"
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path 
+                      d="M2 12C2 6.47715 6.47715 2 12 2V5C8.13401 5 5 8.13401 5 12H2Z" 
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    {t("rescheduleRequested") || "Reschedule Requested"}
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Your request has been submitted. Please wait for approval from the administration team.
+                  </p>
+                </div>
+
+                <div className="bg-orange-50 rounded-xl p-4">
+                  <p className="text-orange-800 text-sm text-center">
+                    You will receive an email once your request has been processed.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    setShowRescheduleModal(false);
+                    const next = { ...app };
+                    next.steps.appointment.rescheduleRequested = true;
+                    next.steps.appointment.rescheduleRequestedAt = new Date().toISOString();
+                    setApp(next);
+                    updateApp(() => next);
+                    goToDashboard();
+                  }}
+                  className="w-full bg-orange-600 hover:bg-orange-700 text-white gap-2"
+                >
+                  {t("backToDashboard") || "Back to Dashboard"}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
         {/* Success Popup */}
         {showSuccessPopup && savedAppointment && (
           <motion.div
@@ -801,70 +1023,138 @@ import React, { useState, useEffect } from "react";
           <p className="text-muted-foreground mb-4">{t("scheduleAppointmentsDescription")}</p>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-6">
+        <div className={`${app.steps.appointment?.done ? "" : "grid sm:grid-cols-2 gap-6"}`}>
           {/* Calendar */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">{t("selectDate")}</label>
-            <DayPicker
-              mode="single"
-              selected={selectedDate ? new Date(selectedDate) : undefined}
-              onSelect={handleDateSelect}
-              disabled={(date) => {
-                if (!date) return true;
-                const d = date;
-                const yyyy = d.getFullYear();
-                const mm = String(d.getMonth() + 1).padStart(2, "0");
-                const dd = String(d.getDate()).padStart(2, "0");
-                return !mockAvailability[`${yyyy}-${mm}-${dd}`];
-              }}
-              modifiersClassNames={{
-                selected: "bg-primary text-white rounded-full shadow-md",
-                disabled: "text-muted-foreground opacity-40 cursor-not-allowed",
-                today: "border border-primary rounded-full",
-              }}
-              className="rounded-xl border border-gray-200 shadow-sm bg-white p-3 w-full max-w-[360px]"
-              styles={{
-                day: { width: "2.5rem", height: "2.5rem", lineHeight: "2.5rem", margin: "0.2rem" },
-                caption: { fontSize: "0.95rem", fontWeight: 600, marginBottom: "0.4rem", textAlign: "center" },
-                nav: { marginBottom: "0.8rem" },
-              }}
-            />
-          </div>
+          {!app.steps.appointment?.done && (
+            <div>
+              <label className="text-sm font-medium mb-2 block">{t("selectDate")}</label>
+              <DayPicker
+                mode="single"
+                selected={selectedDate ? new Date(selectedDate) : undefined}
+                onSelect={handleDateSelect}
+                disabled={(date) => {
+                  if (!date) return true;
+                  const d = date;
+                  const yyyy = d.getFullYear();
+                  const mm = String(d.getMonth() + 1).padStart(2, "0");
+                  const dd = String(d.getDate()).padStart(2, "0");
+                  return !mockAvailability[`${yyyy}-${mm}-${dd}`];
+                }}
+                modifiersClassNames={{
+                  selected: "bg-primary text-white rounded-full shadow-md",
+                  disabled: "text-muted-foreground opacity-40 cursor-not-allowed",
+                  today: "border border-primary rounded-full",
+                }}
+                className="rounded-xl border border-gray-200 shadow-sm bg-white p-3 w-full max-w-[360px]"
+                styles={{
+                  day: { width: "2.5rem", height: "2.5rem", lineHeight: "2.5rem", margin: "0.2rem" },
+                  caption: { fontSize: "0.95rem", fontWeight: 600, marginBottom: "0.4rem", textAlign: "center" },
+                  nav: { marginBottom: "0.8rem" },
+                }}
+              />
+            </div>
+          )}
 
           {/* Available times */}
           <div>
-            <label className="text-sm font-medium mb-2 block">{t("selectTime")}</label>
-            {availableTimes.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Select a date first</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {availableTimes.map((time) => (
-                  <button
-                    key={time}
-                    onClick={() => handleTimeSelect(time)}
-                    className={`flex items-center justify-center py-2 px-4 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md ${
-                      selectedTime === time
-                        ? "bg-primary text-white border-primary"
-                        : "bg-white border-gray-200 hover:bg-primary/5"
-                    }`}
-                  >
-                    {time}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Confirm Appointment */}
-            {selectedDate && selectedTime && (
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="mt-4">
-                <Button
-                  onClick={saveAppointment}
-                  className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+            {app.steps.appointment?.done ? (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-xl p-8 text-center space-y-6 shadow-md border border-gray-100"
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 10 }}
+                  className="w-20 h-20 bg-green-100 rounded-full mx-auto flex items-center justify-center border-4 border-green-50 shadow-sm"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  {t("confirmAppointment")}
-                </Button>
+                  <CheckCircle2 className="w-10 h-10 text-green-600" />
+                </motion.div>
+                
+                <div className="space-y-3">
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    {t("Appointment Scheduled Successfully") || "Appointment Scheduled Successfully"}
+                  </h3>
+                  <div className="bg-gray-50 rounded-lg py-3 px-4 inline-block">
+                    <p className="text-gray-700 font-medium">
+                      {new Date(app.steps.appointment.date).toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })} at {app.steps.appointment.time}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-6">
+                  <div className="border-t border-gray-100 pt-6">
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowRescheduleModal(true)}
+                        className="gap-2 bg-red-600 hover:bg-red-700 text-white font-bold border-red-600 hover:border-red-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                      >
+                        <svg 
+                          className="w-4 h-4 text-white animate-spin"
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path 
+                            d="M2 12C2 6.47715 6.47715 2 12 2V5C8.13401 5 5 8.13401 5 12H2Z" 
+                            fill="currentColor"
+                          />
+                        </svg>
+                        {t("Request Reschedule") || "Request Reschedule"}
+                      </Button>
+                    </motion.div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Need to change your appointment time? Click here to reschedule.
+                    </p>
+                  </div>
+                </div>
               </motion.div>
+            ) : (
+              <>
+                <label className="text-sm font-medium mb-2 block">{t("selectTime")}</label>
+                {availableTimes.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">Select a date first</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {availableTimes.map((time) => (
+                      <button
+                        key={time}
+                        onClick={() => handleTimeSelect(time)}
+                        className={`flex items-center justify-center py-2 px-4 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md ${
+                          selectedTime === time
+                            ? "bg-primary text-white border-primary"
+                            : "bg-white border-gray-200 hover:bg-primary/5"
+                        }`}
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Confirm Appointment */}
+                {selectedDate && selectedTime && (
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="mt-4">
+                    <Button
+                      onClick={saveAppointment}
+                      className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {t("confirmAppointment")}
+                    </Button>
+                  </motion.div>
+                )}
+              </>
             )}
           </div>
         </div>
