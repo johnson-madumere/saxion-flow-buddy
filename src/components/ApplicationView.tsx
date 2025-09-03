@@ -139,6 +139,16 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
     }
   }, [app?.steps?.documents?.approved, app?.steps?.documents?.submitted, app?.steps?.assignment?.submittedAt]);
 
+  // Sync appointment state when app data changes
+  useEffect(() => {
+    if (app?.steps?.appointment?.date) {
+      setSelectedDate(app.steps.appointment.date);
+    }
+    if (app?.steps?.appointment?.time) {
+      setSelectedTime(app.steps.appointment.time);
+    }
+  }, [app?.steps?.appointment?.date, app?.steps?.appointment?.time]);
+
   // Active card state - always start with questionnaire for fresh applications
   const [activeCard, setActiveCard] = useState("questionnaire");
 
@@ -173,9 +183,9 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
     "2025-09-08": ["10:30", "12:00", "16:00"],
   };
   
-  const [selectedDate, setSelectedDate] = useState(app.steps?.appointment?.date || "");
+  const [selectedDate, setSelectedDate] = useState("");
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
-  const [selectedTime, setSelectedTime] = useState(app.steps?.appointment?.time || "");
+  const [selectedTime, setSelectedTime] = useState("");
   
   // When a date is selected
   const handleDateSelect = (date: Date) => {
@@ -249,14 +259,21 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
 
   // Helpers
   const getCardState = (cardId: string) => {
-    if (cardId === activeCard) return "active";
+    // Check completed states first (highest priority)
     if (cardId === "questionnaire" && app?.steps?.assignment?.submittedAt) return "completed";
     if (cardId === "documents" && app?.steps?.documents?.submitted && app?.steps?.documents?.approved) return "completed";
-    if (cardId === "documents" && app?.steps?.assignment?.submittedAt) return "disabled";
+    if (cardId === "appointments" && app?.steps?.appointment?.done) return "completed";
+    
+    // Check disabled states
+    if (cardId === "documents" && !app?.steps?.assignment?.submittedAt) return "disabled";
     if (cardId === "appointments" && !app?.steps?.documents?.approved) return "disabled";
+    
+    // Check active state (only if not completed)
+    if (cardId === activeCard) return "active";
+    
+    // Default to pending
     return "pending";
   };
-
   const isCardLocked = (cardId: string) => (cardId === "appointments" ? !isApproved : false);
 
   const setStep = (path: string, value: any) => {
@@ -576,14 +593,6 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
 
               <div className="space-y-3">
                 <Button
-                  onClick={() => window.open(savedAppointment.teamsLink, '_blank')}
-                  className="w-full bg-blue-600 hover:bg-blue-700 gap-2"
-                >
-                  <Video className="w-4 h-4" />
-                  {t("joinMeeting") || "Join Microsoft Teams Meeting"}
-                </Button>
-                
-                <Button
                   onClick={goToDashboard}
                   variant="outline"
                   className="w-full"
@@ -739,22 +748,6 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                 />
 
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <input
-                    type="file"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (!f) return;
-                      const meta = { name: f.name, size: f.size, type: f.type };
-                      const next = { ...app };
-                      if (!next.steps.assignment) next.steps.assignment = {};
-                      next.steps.assignment.file = meta;
-                      next.steps.assignment.submittedAt = nowIso().slice(0, 10);
-                      updateApp(() => next);
-                      setApp(next);
-                    }}
-                    className="flex-1 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                  />
-
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                     <Button
                       onClick={() => {
@@ -895,164 +888,158 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
           )}
 
           {/* Appointments */}
-          {activeCard === "appointments" && (
-            <div className="space-y-6">
-              {!isApproved ? (
-                <div className="text-center py-12">
-                  <Lock className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <h3 className="text-lg font-semibold mb-2">{t("appointmentsLocked")}</h3>
-                  <p className="text-muted-foreground mb-4">{t("appointmentsLockedDescription")}</p>
-                  <Button variant="outline" onClick={() => {}} className="gap-2">
-                    <ArrowRight className="w-4 h-4 rotate-180" />
-                    {t("backToDocuments")}
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">{t("scheduleAppointments")}</h3>
-                    <p className="text-muted-foreground mb-4">{t("scheduleAppointmentsDescription")}</p>
-                  </div>
+{activeCard === "appointments" && (
+  <div className="space-y-6">
+    {!isApproved ? (
+      <div className="text-center py-12">
+        <Lock className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+        <h3 className="text-lg font-semibold mb-2">{t("appointmentsLocked")}</h3>
+        <p className="text-muted-foreground mb-4">{t("appointmentsLockedDescription")}</p>
+        <Button variant="outline" onClick={() => {}} className="gap-2">
+          <ArrowRight className="w-4 h-4 rotate-180" />
+          {t("backToDocuments")}
+        </Button>
+      </div>
+    ) : (
+      <>
+        <div>
+          <h3 className="text-lg font-semibold mb-2">{t("scheduleAppointments")}</h3>
+          <p className="text-muted-foreground mb-4">{t("scheduleAppointmentsDescription")}</p>
+        </div>
 
-                  <div className={`${app.steps.appointment?.done ? "" : "grid sm:grid-cols-2 gap-6"}`}>
-                    {/* Calendar */}
-                    {!app.steps.appointment?.done && (
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">{t("selectDate")}</label>
-                        <DayPicker
-                          mode="single"
-                          selected={selectedDate ? new Date(selectedDate) : undefined}
-                          onSelect={handleDateSelect}
-                          disabled={(date) => {
-                            if (!date) return true;
-                            const d = date;
-                            const yyyy = d.getFullYear();
-                            const mm = String(d.getMonth() + 1).padStart(2, "0");
-                            const dd = String(d.getDate()).padStart(2, "0");
-                            return !mockAvailability[`${yyyy}-${mm}-${dd}`];
-                          }}
-                          modifiersClassNames={{
-                            selected: "bg-primary text-white rounded-full shadow-md",
-                            disabled: "text-muted-foreground opacity-40 cursor-not-allowed",
-                            today: "border border-primary rounded-full",
-                          }}
-                          className="rounded-xl border border-gray-200 shadow-sm bg-white p-3 w-full max-w-[360px]"
-                          styles={{
-                            day: { width: "2.5rem", height: "2.5rem", lineHeight: "2.5rem", margin: "0.2rem" },
-                            caption: { fontSize: "0.95rem", fontWeight: 600, marginBottom: "0.4rem", textAlign: "center" },
-                            nav: { marginBottom: "0.8rem" },
-                          }}
-                        />
-                      </div>
-                    )}
-
-                    {/* Available times */}
-                    <div>
-                      {app.steps.appointment?.done ? (
-                        <motion.div 
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="bg-white rounded-xl p-8 text-center space-y-6 shadow-md border border-gray-100"
-                        >
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: "spring", stiffness: 200, damping: 10 }}
-                            className="w-20 h-20 bg-green-100 rounded-full mx-auto flex items-center justify-center border-4 border-green-50 shadow-sm"
-                          >
-                            <CheckCircle2 className="w-10 h-10 text-green-600" />
-                          </motion.div>
-                          
-                          <div className="space-y-3">
-                            <h3 className="text-2xl font-bold text-gray-900">
-                              {t("Appointment Scheduled Successfully") || "Appointment Scheduled Successfully"}
-                            </h3>
-                            <div className="bg-gray-50 rounded-lg py-3 px-4 inline-block">
-                              <p className="text-gray-700 font-medium">
-                                {new Date(app.steps?.appointment?.date || '').toLocaleDateString('en-US', { 
-                                  weekday: 'long', 
-                                  year: 'numeric', 
-                                  month: 'long', 
-                                  day: 'numeric' 
-                                })} at {app.steps?.appointment?.time || ''}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="pt-6">
-                            <div className="border-t border-gray-100 pt-6">
-                              <motion.div
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                              >
-                                <Button
-                                  variant="outline"
-                                  onClick={() => setShowRescheduleModal(true)}
-                                  className="gap-2 bg-red-600 hover:bg-red-700 text-white font-bold border-red-600 hover:border-red-700 transition-all duration-200 shadow-sm hover:shadow-md"
-                                >
-                                  <svg 
-                                    className="w-4 h-4 text-white animate-spin"
-                                    viewBox="0 0 24 24" 
-                                    fill="none" 
-                                    xmlns="http://www.w3.org/2000/svg"
-                                  >
-                                    <path 
-                                      d="M2 12C2 6.47715 6.47715 2 12 2V5C8.13401 5 5 8.13401 5 12H2Z" 
-                                      fill="currentColor"
-                                    />
-                                  </svg>
-                                  {t("Request Reschedule") || "Request Reschedule"}
-                                </Button>
-                              </motion.div>
-                              <p className="text-xs text-gray-500 mt-2">
-                                Need to change your appointment time? Click here to reschedule.
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ) : (
-                        <>
-                          <label className="text-sm font-medium mb-2 block">{t("selectTime")}</label>
-                          {availableTimes.length === 0 ? (
-                            <p className="text-muted-foreground text-sm">Select a date first</p>
-                          ) : (
-                            <div className="grid grid-cols-2 gap-3">
-                              {availableTimes.map((time) => (
-                                <button
-                                  key={time}
-                                  onClick={() => handleTimeSelect(time)}
-                                  className={`flex items-center justify-center py-2 px-4 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md ${
-                                    selectedTime === time
-                                      ? "bg-primary text-white border-primary"
-                                      : "bg-white border-gray-200 hover:bg-primary/5"
-                                  }`}
-                                >
-                                  {time}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Confirm Appointment */}
-                          {selectedDate && selectedTime && (
-                            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="mt-4">
-                              <Button
-                                onClick={saveAppointment}
-                                className="gap-2 bg-green-600 hover:bg-green-700 text-white"
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                                {t("confirmAppointment")}
-                              </Button>
-                            </motion.div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
+        <div className={`${app.steps.appointment?.done ? "" : "grid sm:grid-cols-2 gap-6"}`}>
+          {/* Calendar */}
+          {!app.steps.appointment?.done && (
+            <div>
+              <label className="text-sm font-medium mb-2 block">{t("selectDate")}</label>
+              <DayPicker
+                mode="single"
+                selected={selectedDate ? new Date(selectedDate) : undefined}
+                onSelect={handleDateSelect}
+                disabled={(date) => {
+                  if (!date) return true;
+                  const d = date;
+                  const yyyy = d.getFullYear();
+                  const mm = String(d.getMonth() + 1).padStart(2, "0");
+                  const dd = String(d.getDate()).padStart(2, "0");
+                  return !mockAvailability[`${yyyy}-${mm}-${dd}`];
+                }}
+                modifiersClassNames={{
+                  selected: "bg-primary text-white rounded-full shadow-md",
+                  disabled: "text-muted-foreground opacity-40 cursor-not-allowed",
+                  today: "border border-primary rounded-full",
+                }}
+                className="rounded-xl border border-gray-200 shadow-sm bg-white p-3 w-full max-w-[360px]"
+                styles={{
+                  day: { width: "2.5rem", height: "2.5rem", lineHeight: "2.5rem", margin: "0.2rem" },
+                  caption: { fontSize: "0.95rem", fontWeight: 600, marginBottom: "0.4rem", textAlign: "center" },
+                  nav: { marginBottom: "0.8rem" },
+                }}
+              />
             </div>
           )}
+
+          {/* Available times */}
+          <div>
+            {app.steps.appointment?.done ? (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-xl p-8 text-center space-y-6 shadow-md border border-gray-100"
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 10 }}
+                  className="w-20 h-20 bg-green-100 rounded-full mx-auto flex items-center justify-center border-4 border-green-50 shadow-sm"
+                >
+                  <CheckCircle2 className="w-10 h-10 text-green-600" />
+                </motion.div>
+                
+                <div className="space-y-3">
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    {t("Appointment Scheduled Successfully") || "Appointment Scheduled Successfully"}
+                  </h3>
+                  <div className="bg-gray-50 rounded-lg py-3 px-4 inline-block">
+                    <p className="text-gray-700 font-medium">
+                      {new Date(app.steps?.appointment?.date || '').toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })} at {app.steps?.appointment?.time || ''}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-6">
+                  <div className="border-t border-gray-100 pt-6">
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowRescheduleModal(true)}
+                        className="gap-2 bg-red-600 hover:bg-red-700 text-white font-bold border-red-600 hover:border-red-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                      >
+                        {t("Request Reschedule") || "Request Reschedule"}
+                      </Button>
+                    </motion.div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Need to change your appointment time? Click here to reschedule.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <>
+                <label className="text-sm font-medium mb-2 block">{t("selectTime")}</label>
+                {availableTimes.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">{t("selectDateFirst") || "Select a date first"}</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {availableTimes.map((time) => (
+                      <button
+                        key={time}
+                        onClick={() => handleTimeSelect(time)}
+                        className={`flex items-center justify-center py-2 px-4 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md ${
+                          selectedTime === time
+                            ? "bg-primary text-white border-primary"
+                            : "bg-white border-gray-200 hover:bg-primary/5"
+                        }`}
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Confirm Appointment */}
+                {selectedDate && selectedTime ? (
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="mt-4">
+                    <Button
+                      onClick={saveAppointment}
+                      className="gap-2 bg-[#319C82] text-white"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {t("confirmAppointment")}
+                    </Button>
+                  </motion.div>
+                ) : (
+                  selectedDate && !selectedTime && (
+                    <div className="mt-4 text-center text-sm text-muted-foreground">
+                    </div>
+                  )
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </>
+    )}
+  </div>
+)}
         </div>
       </Card>
     </motion.div>
