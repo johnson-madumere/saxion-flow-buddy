@@ -84,6 +84,10 @@ export const DICT = {
     completeProfileFirst: "You first need to complete your profile before doing something else.",
     completeProfile: "Complete Profile",
     notSpecified: "Not specified",
+    upcomingAppointments: "Upcoming Appointments",
+    noUpcomingAppointments: "No upcoming appointments",
+    viewApplication: "View",
+    joinMeeting: "Join",
   },
   nl: {
     appTitle: "Saxion Intake – Proof of Concept",
@@ -169,6 +173,10 @@ export const DICT = {
     completeProfileFirst: "Je moet eerst je profiel voltooien voordat je iets anders kunt doen.",
     completeProfile: "Profiel Voltooien",
     notSpecified: "Niet opgegeven",
+    upcomingAppointments: "Aankomende Afspraken",
+    noUpcomingAppointments: "Geen aankomende afspraken",
+    viewApplication: "Bekijk",
+    joinMeeting: "Deelnemen",
   },
 };
 
@@ -196,7 +204,7 @@ export const DEMO_JSON = {
           steps: {
             documents: [],
             assignment: { text: "", file: null, submittedAt: null },
-            appointment: { date: "", time: "", type: "intake", notes: "" },
+            appointment: { date: "2025-01-15", time: "14:00", type: "intake", notes: "Initial intake meeting" },
             interview: { date: "", time: "", mode: "online", link: "" },
             result: {
               published: false,
@@ -250,6 +258,27 @@ export const DEMO_JSON = {
             },
           },
         },
+        {
+          id: "app-nl-2025",
+          program: "Business Administration",
+          cycle: "2025/2026",
+          createdAt: "2024-12-15",
+          status: "inProgress",
+          isInternational: false,
+          archived: false,
+          steps: {
+            documents: [],
+            assignment: { text: "", file: null, submittedAt: null },
+            appointment: { date: "2025-01-18", time: "16:00", type: "intake", notes: "Business program intake interview" },
+            interview: { date: "", time: "", mode: "online", link: "" },
+            result: {
+              published: false,
+              decision: null,
+              publishedAt: null,
+              notes: "",
+            },
+          },
+        },
       ],
     },
     {
@@ -273,7 +302,7 @@ export const DEMO_JSON = {
           steps: {
             documents: [],
             assignment: { text: "", file: null, submittedAt: null },
-            appointment: { date: "", time: "", type: "meet&greet", notes: "" },
+            appointment: { date: "2025-01-20", time: "10:30", type: "meet&greet", notes: "International student meet & greet session" },
             interview: { date: "", time: "", mode: "online", link: "" },
             result: {
               published: false,
