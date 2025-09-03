@@ -242,7 +242,7 @@ export const DEMO_JSON = {
           program: "HBO-ICT",
           cycle: "2023/2024",
           createdAt: "2023-05-20",
-          status: "inProgress",
+          status: "New",
           isInternational: false,
           archived: false,
           steps: {
@@ -263,7 +263,7 @@ export const DEMO_JSON = {
           program: "Creative Media",
           cycle: "2021/2022",
           createdAt: "2021-03-10",
-          status: "submitted",
+          status: "New",
           isInternational: false,
           archived: false,
           steps: {
@@ -307,7 +307,7 @@ export const DEMO_JSON = {
           program: "Business Administration",
           cycle: "2025/2026",
           createdAt: "2024-12-15",
-          status: "inProgress",
+          status: "New",
           isInternational: false,
           archived: false,
           steps: {
