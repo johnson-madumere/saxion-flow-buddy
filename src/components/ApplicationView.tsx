@@ -381,7 +381,8 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
       )}
 
       {/* Step cards */}
-      <div className="flex items-center gap-0 mb-8">
+      {/* Desktop: full cards */}
+      <div className="hidden md:flex items-center gap-0 mb-8">
         {cards.map((card, index) => {
           const state = getCardState(card.id);
           const locked = isCardLocked(card.id);
@@ -401,6 +402,35 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                   isActive={activeCard === card.id || activeCard === cards[index + 1].id}
                   isCompleted={isCompleted}
                 />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {/* Mobile: compact stepper */}
+      <div className="flex md:hidden items-center justify-center gap-2 mb-8">
+        {cards.map((card, index) => {
+          const state = getCardState(card.id);
+          const isCompleted = state === "completed";
+          const isActive = state === "active";
+          return (
+            <React.Fragment key={card.id}>
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                isCompleted
+                  ? "bg-green-100 border-green-400 text-green-600"
+                  : isActive
+                  ? "bg-primary/20 border-primary text-primary"
+                  : "bg-muted border-muted-foreground text-muted-foreground"
+              }`}>
+                {isCompleted ? (
+                  <CheckCircle2 className="w-5 h-5" />
+                ) : (
+                  <Clock className="w-5 h-5" />
+                )}
+              </div>
+              {index < cards.length - 1 && (
+                <ArrowRight className="w-4 h-4 text-muted-foreground mx-1" />
               )}
             </React.Fragment>
           );
