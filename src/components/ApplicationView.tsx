@@ -22,6 +22,8 @@ import React, { useState, useEffect } from "react";
     Lock,
     Loader2,
     File,
+    Video,
+    ExternalLink,
   } from "lucide-react";
   import { motion } from "framer-motion";
   import { DayPicker } from "react-day-picker";
@@ -39,6 +41,8 @@ import React, { useState, useEffect } from "react";
     const [isReviewing, setIsReviewing] = useState(false);
     const [isApproved, setIsApproved] = useState<boolean>(!!app?.steps?.documents?.approved);
     const [forceUpdate, setForceUpdate] = useState(0);
+    const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+    const [savedAppointment, setSavedAppointment] = useState<any>(null);
 
     // Restore from localStorage on mount if no app exists
     useEffect(() => {
@@ -137,6 +141,24 @@ import React, { useState, useEffect } from "react";
       setSelectedTime(time);
       setStep("appointment.time", time);
     };
+
+    // Generate Microsoft Teams meeting link
+    const generateTeamsLink = (appointment: any) => {
+      const meetingId = `saxion-${app.program.toLowerCase().replace(/\s+/g, '-')}-${app.cycle}-${appointment.date}-${appointment.time.replace(':', '')}`;
+      const context = {
+        program: app.program,
+        cycle: app.cycle,
+        applicationId: app.id,
+        studentName: user.name,
+        studentEmail: user.email,
+        appointmentDate: appointment.date,
+        appointmentTime: appointment.time,
+        type: "intake"
+      };
+      
+      return `https://teams.microsoft.com/l/meetup-join/${meetingId}?context=${encodeURIComponent(JSON.stringify(context))}`;
+    };
+
     // Simulate review & approval after submission
     useEffect(() => {
       const docs = app.steps.documents;
@@ -155,7 +177,6 @@ import React, { useState, useEffect } from "react";
           if (!next.steps.documents) next.steps.documents = {};
           next.steps.documents.approved = true;
           next.steps.documents.approvedAt = new Date().toISOString();
-          next.status = "approved";
 
           setApp(next);
           updateApp(() => next);
@@ -176,7 +197,7 @@ import React, { useState, useEffect } from "react";
       if (cardId === activeCard) return "active";
       if (cardId === "questionnaire" && app?.steps?.assignment?.submittedAt) return "completed";
       if (cardId === "documents" && app?.steps?.documents?.submitted && app?.steps?.documents?.approved) return "completed"; // Ensure documents are both submitted and approved
-      if (cardId === "documents" && !app?.steps?.assignment?.submittedAt) return "disabled";
+      if (cardId === "documents" && app?.steps?.assignment?.submittedAt) return "disabled";
       if (cardId === "appointments" && !app?.steps?.documents?.approved) return "disabled";
       return "pending";
     };
@@ -223,6 +244,45 @@ import React, { useState, useEffect } from "react";
     };
 
     const nowIso = () => new Date().toISOString();
+
+    // Save appointment and show success popup
+    const saveAppointment = () => {
+      if (!selectedDate || !selectedTime) return;
+
+      const appointment = {
+        date: selectedDate,
+        time: selectedTime,
+        type: "intake",
+        notes: `Intake appointment for ${app.program} - ${app.cycle}`,
+        scheduledAt: new Date().toISOString(),
+        teamsLink: generateTeamsLink({ date: selectedDate, time: selectedTime })
+      };
+
+      // Update the application with appointment details
+      const next = { ...app };
+      if (!next.steps.appointment) next.steps.appointment = {};
+      next.steps.appointment.date = selectedDate;
+      next.steps.appointment.time = selectedTime;
+      next.steps.appointment.type = "intake";
+      next.steps.appointment.notes = appointment.notes;
+      next.steps.appointment.scheduledAt = appointment.scheduledAt;
+      next.steps.appointment.teamsLink = appointment.teamsLink;
+      next.steps.appointment.done = true;
+      next.status = "appointmentScheduled";
+
+      // Update both local state and parent state
+      setApp(next);
+      updateApp(() => next);
+      
+      // Show success popup
+      setSavedAppointment(appointment);
+      setShowSuccessPopup(true);
+    };
+
+    // Navigate back to dashboard
+    const goToDashboard = () => {
+      setApp(null);
+    };
 
     // Card component with distinct icon
     const CardComponent = ({
@@ -277,7 +337,7 @@ import React, { useState, useEffect } from "react";
                   } bg-white`}
                 >
                   {isLocked ? (
-                    <Lock className="w-6 h-6 sm:w-8 sm:h-8 text-gray-500" />
+                    <Lock className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
                   ) : (
                     <IconComponent className={`w-8 h-8 ${isCompleted ? "text-green-600" : "text-primary"}`} />
                   )}
@@ -350,6 +410,76 @@ import React, { useState, useEffect } from "react";
         animate={{ opacity: 1, x: 0 }}
         className="space-y-6"
       >
+        {/* Success Popup */}
+        {showSuccessPopup && savedAppointment && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl"
+            >
+              <div className="text-center space-y-6">
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-10 h-10 text-green-600" />
+                </div>
+                
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    {t("appointmentConfirmed") || "Appointment Confirmed!"}
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Your intake appointment has been scheduled successfully.
+                  </p>
+                </div>
+
+                <div className="bg-blue-50 rounded-xl p-4 text-left">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                    <span className="font-medium text-blue-900">
+                      {new Date(savedAppointment.date).toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="w-4 h-4 text-green-600" />
+                    <span className="font-medium text-green-900">{savedAppointment.time}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-purple-600" />
+                    <span className="text-sm text-gray-700">{app.program} - {app.cycle}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => window.open(savedAppointment.teamsLink, '_blank')}
+                    className="w-full bg-blue-600 hover:bg-blue-700 gap-2"
+                  >
+                    <Video className="w-4 h-4" />
+                    {t("joinMeeting") || "Join Microsoft Teams Meeting"}
+                  </Button>
+                  
+                  <Button
+                    onClick={goToDashboard}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {t("backToDashboard") || "Back to Dashboard"}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <motion.div whileHover={{ scale: 1.05 }}>
@@ -631,7 +761,7 @@ import React, { useState, useEffect } from "react";
                             const next = { ...app };
                             if (!next.steps.documents) next.steps.documents = {};
                             next.steps.documents.approved = true;
-                            next.steps.documents.approvedAt = new Date().toISOString();
+                            next.steps.documents.approvedAt = nowIso().slice(0, 10);
                             next.status = "approved";
                             
                             setApp(next);
@@ -728,28 +858,7 @@ import React, { useState, useEffect } from "react";
             {selectedDate && selectedTime && (
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="mt-4">
                 <Button
-                  onClick={() => {
-                    // Save appointment
-                    setStep("appointment.date", selectedDate);
-                    setStep("appointment.time", selectedTime);
-
-                    // Mark as done
-                    const next = { ...app };
-                    if (!next.steps.appointment) next.steps.appointment = {};
-                    next.steps.appointment.done = true;
-                    next.status = "appointmentScheduled";
-                    setApp(next);
-                    updateApp(() => next);
-
-                    // Show feedback
-                    alert(t("appointmentConfirmed")); // can be replaced with a fancy toast
-
-                    // Redirect to dashboard after 1.5s
-                    setTimeout(() => {
-                      // Replace with your navigation logic
-                      window.location.href = "/dashboard";
-                    }, 1500);
-                  }}
+                  onClick={saveAppointment}
                   className="gap-2 bg-green-600 hover:bg-green-700 text-white"
                 >
                   <CheckCircle2 className="w-4 h-4" />

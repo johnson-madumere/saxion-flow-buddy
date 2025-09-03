@@ -74,13 +74,22 @@ export function Dashboard({ t, user, onStart, onRunArchival, onDownload, onCompl
   };
 
   const getMeetingLink = (appointment: any) => {
-    return `https://teams.microsoft.com/l/meetup-join/example?context=${encodeURIComponent(
-      JSON.stringify({
-        program: appointment.program,
-        applicationId: appointment.applicationId,
-        type: appointment.type,
-      })
-    )}`;
+    // Try to get the Teams link from the application data first
+    const application = user.applications.find((a: any) => a.id === appointment.applicationId);
+    if (application?.steps?.appointment?.teamsLink) {
+      return application.steps.appointment.teamsLink;
+    }
+    
+    // Fallback to generating a link if none exists
+    const meetingId = `saxion-${appointment.program.toLowerCase().replace(/\s+/g, '-')}-${appointment.cycle}-${appointment.date}-${appointment.time.replace(':', '')}`;
+    const context = {
+      program: appointment.program,
+      cycle: appointment.cycle,
+      applicationId: appointment.applicationId,
+      type: appointment.type,
+    };
+    
+    return `https://teams.microsoft.com/l/meetup-join/${meetingId}?context=${encodeURIComponent(JSON.stringify(context))}`;
   };
 
   return (
