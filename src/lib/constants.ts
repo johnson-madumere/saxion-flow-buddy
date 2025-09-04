@@ -110,6 +110,29 @@ export const DICT = {
     noDocumentsUploadedYet: "No documents uploaded yet",
     yourDocuments: "Your Documents",
     uploadRequiredDocuments: "Upload your required documents",
+    // Missing translations for ApplicationView
+    rescheduleRequested: "Reschedule Requested",
+    appointmentConfirmed: "Appointment Confirmed!",
+    "Appointment Scheduled Successfully": "Appointment Scheduled Successfully",
+    "Request Reschedule": "Request Reschedule",
+    selectDateFirst: "Select a date first",
+    confirmAppointment: "Confirm Appointment",
+    submitDocuments: "Submit Documents",
+    // Missing translations for Dashboard
+    // Missing translations for ProfileScreen
+    backToDashboard: "Back to Dashboard",
+    // Additional missing translations
+    rescheduleRequestSubmitted: "Your request has been submitted. Please wait for approval from the administration team.",
+    rescheduleEmailNotification: "You will receive an email once your request has been processed.",
+    appointmentScheduledSuccessfully: "Your intake appointment has been scheduled successfully.",
+    rescheduleHelpText: "Need to change your appointment time? Click here to reschedule.",
+    // More missing translations
+    duration: "Duration",
+    location: "Location",
+    deadline: "Deadline",
+    campus: "Campus",
+    tbd: "TBD",
+    invalidCredentials: "Invalid credentials (use demo/demo)",
   },
   nl: {
     appTitle: "Saxion Intake – Proof of Concept",
@@ -221,6 +244,28 @@ export const DICT = {
     noDocumentsUploadedYet: "Nog geen documenten geüpload",
     yourDocuments: "Jouw Documenten",
     uploadRequiredDocuments: "Upload je vereiste documenten",
+    // Missing translations for ApplicationView
+    rescheduleRequested: "Herplannen Aangevraagd",
+    appointmentConfirmed: "Afspraak Bevestigd!",
+    "Appointment Scheduled Successfully": "Afspraak Succesvol Ingepland",
+    "Request Reschedule": "Herplannen Aanvragen",
+    selectDateFirst: "Selecteer eerst een datum",
+    confirmAppointment: "Afspraak Bevestigen",
+    submitDocuments: "Documenten Indienen",
+    // Missing translations for ProfileScreen
+    backToDashboard: "Terug naar Dashboard",
+    // Additional missing translations
+    rescheduleRequestSubmitted: "Je verzoek is ingediend. Wacht op goedkeuring van het administratieteam.",
+    rescheduleEmailNotification: "Je ontvangt een e-mail zodra je verzoek is verwerkt.",
+    appointmentScheduledSuccessfully: "Je intake afspraak is succesvol ingepland.",
+    rescheduleHelpText: "Wil je je afspraak tijd wijzigen? Klik hier om te herplannen.",
+    // More missing translations
+    duration: "Duur",
+    location: "Locatie",
+    deadline: "Deadline",
+    campus: "Campus",
+    tbd: "NVT",
+    invalidCredentials: "Ongeldige inloggegevens (gebruik demo/demo)",
   },
 };
 

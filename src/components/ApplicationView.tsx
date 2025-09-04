@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
 import {
   Calendar,
   Upload,
@@ -514,13 +506,13 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                   {t("rescheduleRequested") || "Reschedule Requested"}
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Your request has been submitted. Please wait for approval from the administration team.
+                  {t("rescheduleRequestSubmitted")}
                 </p>
               </div>
 
               <div className="bg-orange-50 rounded-xl p-4">
                 <p className="text-orange-800 text-sm text-center">
-                  You will receive an email once your request has been processed.
+                  {t("rescheduleEmailNotification")}
                 </p>
               </div>
 
@@ -557,7 +549,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
           >
             <div className="text-center space-y-6">
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-10 h-10 text-green-600" />
+                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
               </div>
               
               <div>
@@ -565,7 +557,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                   {t("appointmentConfirmed") || "Appointment Confirmed!"}
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Your intake appointment has been scheduled successfully.
+                  {t("appointmentScheduledSuccessfully")}
                 </p>
               </div>
 
@@ -627,7 +619,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
             {app.archived && <Badge variant="outline">{t("archived")}</Badge>}
           </div>
           <div className="text-muted-foreground">
-            Duration: {app.cycle} • Location: {app.location || "Campus"} • Deadline:{" "}
+            {t("duration")}: {app.cycle} • {t("location")}: {app.location || t("campus")} • Deadline:{" "}
             {app.deadline || "TBD"} • {t("status")}: {t(app.status)}
           </div>
         </div>
@@ -902,12 +894,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
       </div>
     ) : (
       <>
-        <div>
-          <h3 className="text-lg font-semibold mb-2">{t("scheduleAppointments")}</h3>
-          <p className="text-muted-foreground mb-4">{t("scheduleAppointmentsDescription")}</p>
-        </div>
-
-        <div className={`${app.steps.appointment?.done ? "" : "grid sm:grid-cols-2 gap-6"}`}>
+        <div className={`${app.steps.appointment?.done ? "" : "flex flex-col lg:grid lg:grid-cols-2 gap-4 lg:gap-6"}`}>
           {/* Calendar */}
           {!app.steps.appointment?.done && (
             <div>
@@ -929,11 +916,11 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                   disabled: "text-muted-foreground opacity-40 cursor-not-allowed",
                   today: "border border-primary rounded-full",
                 }}
-                className="rounded-xl border border-gray-200 shadow-sm bg-white p-3 w-full max-w-[360px]"
+                className="rounded-xl border border-gray-200 shadow-sm bg-white p-2 sm:p-3 w-full max-w-[320px] sm:max-w-[360px] mx-auto"
                 styles={{
-                  day: { width: "2.5rem", height: "2.5rem", lineHeight: "2.5rem", margin: "0.2rem" },
-                  caption: { fontSize: "0.95rem", fontWeight: 600, marginBottom: "0.4rem", textAlign: "center" },
-                  nav: { marginBottom: "0.8rem" },
+                  day: { width: "2rem", height: "2rem", lineHeight: "2rem", margin: "0.1rem", fontSize: "0.8rem" },
+                  caption: { fontSize: "0.9rem", fontWeight: 600, marginBottom: "0.3rem", textAlign: "center" },
+                  nav: { marginBottom: "0.6rem" },
                 }}
               />
             </div>
@@ -945,19 +932,19 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-xl p-8 text-center space-y-6 shadow-md border border-gray-100"
+                className="bg-white rounded-xl p-4 sm:p-8 text-center space-y-4 sm:space-y-6 shadow-md border border-gray-100"
               >
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 200, damping: 10 }}
-                  className="w-20 h-20 bg-green-100 rounded-full mx-auto flex items-center justify-center border-4 border-green-50 shadow-sm"
+                  className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full mx-auto flex items-center justify-center border-4 border-green-50 shadow-sm"
                 >
-                  <CheckCircle2 className="w-10 h-10 text-green-600" />
+                  <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
                 </motion.div>
                 
                 <div className="space-y-3">
-                  <h3 className="text-2xl font-bold text-gray-900">
+                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900">
                     {t("Appointment Scheduled Successfully") || "Appointment Scheduled Successfully"}
                   </h3>
                   <div className="bg-gray-50 rounded-lg py-3 px-4 inline-block">
@@ -987,7 +974,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                       </Button>
                     </motion.div>
                     <p className="text-xs text-gray-500 mt-2">
-                      Need to change your appointment time? Click here to reschedule.
+                      {t("rescheduleHelpText")}
                     </p>
                   </div>
                 </div>
@@ -998,12 +985,12 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                 {availableTimes.length === 0 ? (
                   <p className="text-muted-foreground text-sm">{t("selectDateFirst") || "Select a date first"}</p>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                     {availableTimes.map((time) => (
                       <button
                         key={time}
                         onClick={() => handleTimeSelect(time)}
-                        className={`flex items-center justify-center py-2 px-4 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md ${
+                        className={`flex items-center justify-center py-2 px-3 sm:px-4 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md text-sm sm:text-base ${
                           selectedTime === time
                             ? "bg-primary text-white border-primary"
                             : "bg-white border-gray-200 hover:bg-primary/5"
