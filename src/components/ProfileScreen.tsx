@@ -204,7 +204,7 @@ export function ProfileScreen({ t, user, onBack, onUpdateProfile, onLogout }: Pr
             {isEditing ? (
               <>
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Button onClick={handleSave} className="gap-2">
+                  <Button onClick={handleSave} className="gap-2 bg-[#319C82] text-white">
                     <Save className="w-4 h-4" />
                     {t("saveChanges")}
                   </Button>
@@ -218,7 +218,7 @@ export function ProfileScreen({ t, user, onBack, onUpdateProfile, onLogout }: Pr
             ) : (
               <>
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Button onClick={() => setIsEditing(true)} className="gap-2">
+                  <Button onClick={() => setIsEditing(true)} className="gap-2 bg-[#319C82] text-white">
                     <User className="w-4 h-4" />
                     {t("editProfile")}
                   </Button>

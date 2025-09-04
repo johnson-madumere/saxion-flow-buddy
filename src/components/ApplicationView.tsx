@@ -133,13 +133,17 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
 
   // Sync appointment state when app data changes
   useEffect(() => {
-    if (app?.steps?.appointment?.date) {
-      setSelectedDate(app.steps.appointment.date);
+    // Only set selected date/time if appointment is already done
+    // Don't auto-select for new appointments
+    if (app?.steps?.appointment?.done) {
+      if (app?.steps?.appointment?.date) {
+        setSelectedDate(app.steps.appointment.date);
+      }
+      if (app?.steps?.appointment?.time) {
+        setSelectedTime(app.steps.appointment.time);
+      }
     }
-    if (app?.steps?.appointment?.time) {
-      setSelectedTime(app.steps.appointment.time);
-    }
-  }, [app?.steps?.appointment?.date, app?.steps?.appointment?.time]);
+  }, [app?.steps?.appointment?.done]); // Only depend on the done status, not date/time
 
   // Active card state - always start with questionnaire for fresh applications
   const [activeCard, setActiveCard] = useState("questionnaire");
@@ -750,7 +754,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                         updateApp(() => next);
                         setApp(next);
                       }}
-                      className="gap-2"
+                      className="gap-2 bg-[#319C82] text-white"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       {t("completeQuestionnaire")}
@@ -787,7 +791,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                 <input
                   type="file"
                   onChange={(e) => e.target.files?.[0] && addDocument(e.target.files[0])}
-                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#319C82] file:text-primary-foreground hover:file:bg-primary/90"
                 />
               </div>
 
@@ -841,7 +845,7 @@ export function ApplicationView({ t, user, app, setApp, updateApp }: Application
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                     <Button
                       onClick={() => {/* Will be handled by activeCard logic */}}
-                      className="gap-2"
+                      className="gap-2 bg-[#319C82] text-white"
                       disabled={!isApproved}
                     >
                       <CheckCircle2 className="w-4 h-4" />
